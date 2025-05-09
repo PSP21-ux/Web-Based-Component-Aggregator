@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web-Based Component Aggregator</title>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" href="/static/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png" />
+    <link rel="manifest" href="/static/site.webmanifest" />
+
+    <style>
+        /* CSS Variables for Themes */
+        :root {
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --success-color: #2ecc71;
+            --success-hover: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --text-color: #333;
+            --bg-color: #f5f5f5;
+            --card-bg: white;
+            --border-color: #ddd;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --muted-color: #7f8c8d;
+            --header-bg: #3498db;
+            --header-text: white;
+            --input-bg: white;
+            --input-border: #ddd;
+            --modal-bg: #fefefe;
+            --neon-glow: 0 0 10px rgba(52, 152, 219, 0.8);
+            --background-image: url('{{ url_for('static', filename='light-bg.jpg') }}');
+        }
+
+        .dark-mode {
+            --primary-color: #00d4ff;
+            --primary-hover: #00a3cc;
+            --success-color: #00ff88;
+            --success-hover: #00cc6a;
+            --danger-color: #ff3c3c;
+            --warning-color: #ff9f1c;
+            --text-color: #f0f0f0;
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --border-color: #333;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --muted-color: #a0a0a0;
+            --header-bg: #0a1929;
+            --header-text: #f0f0f0;
+            --input-bg: #2d2d2d;
+            --input-border: #444;
+            --modal-bg: #2d2d2d;
+            --neon-glow: 0 0 15px rgba(0, 212, 255, 0.6);
+            --background-image: url('{{ url_for('static', filename='dark-bg.jpg') }}');
+        }
+
+        /* Base Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.5s ease, color 0.5s ease;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: var(--background-image);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            opacity: 0.15;
+            z-index: -1;
+            transition: background-image 0.5s ease, opacity 0.5s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px;
+            animation: fadeIn 0.8s ease-in-out;
+            background-color: rgba(var(--card-bg-rgb), 0.9);
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Mobile-first adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-form input {
+                border-radius: 5px;
+                margin-bottom: 5px;
+            }
+
+            .search-form button {
+                border-radius: 5px;
+                width: 100%;
+            }
+
+            .products-container {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .filters button {
+                padding: 6px 10px;
+                font-size: 14px;
+            }
+
+            .product .actions {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .product button {
+                width: 100%;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 20% auto;
+            }
+
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+            }
+
+            .toggle-btn {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .products-container {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.8;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes underlineGrow {
+            from {
+                transform: scaleX(0);
+            }
+
+            to {
+                transform: scaleX(1);
+            }
+        }
+
+        @keyframes shine {
+            0% {
+                transform: translateX(-100%) rotate(30deg);
+            }
+
+            100% {
+                transform: translateX(100%) rotate(30deg);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes hakiChaos {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5) rotate(var(--angle));
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.5) rotate(var(--angle));
+                opacity: 0;
+            }
+        }
+
+        @keyframes auraExpand {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(10);
+                opacity: 0;
+            }
+        }
+
+        /* Header Styles */
+        header {
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: var(--neon-glow);
+            transition: all 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(to bottom right,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.1) 50%,
+                    rgba(255, 255, 255, 0) 100%);
+            transform: rotate(30deg);
+            animation: shine 5s infinite;
+        }
+
+        /* Search Components */
+        .search-form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .search-form input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--input-border);
+            border-radius: 5px 0 0 5px;
+            font-size: 16px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .search-form input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px var(--primary-color);
+        }
+
+        .search-form button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .search-form button:hover {
+            background-color: var(--primary-hover);
+            box-shadow: var(--neon-glow);
+        }
+
+        .search-options {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .refresh-option {
+            display: flex;
+            align-items: center;
+            margin-left: 10px;
+        }
+
+        /* Status Messages */
+        .status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        .status.searching {
+            display: block;
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .status.fetching {
+            display: block;
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .status.error {
+            display: block;
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        /* Product Grid */
+        .products-container {
+            display: grid;
+            gap: 15px;
+        }
+
+        .product {
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 5px;
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 5px var(--shadow-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .product:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px var(--shadow-color), var(--neon-glow);
+        }
+
+        .product:hover::before {
+            transform: scaleX(1);
+        }
+
+        .product h2 {
+            font-size: 18px;
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        .product img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            transition: transform 0.3s ease;
+        }
+
+        .product:hover img {
+            transform: scale(1.03);
+        }
+
+        .product p {
+            margin: 5px 0;
+            color: var(--text-color);
+        }
+
+        .product .price {
+            font-weight: bold;
+            color: var(--danger-color);
+        }
+
+        .product .availability {
+            font-weight: bold;
+        }
+
+        .availability.yes {
+            color: var(--success-color);
+        }
+
+        .availability.no {
+            color: var(--danger-color);
+        }
+
+        .product .source {
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--muted-color);
+        }
+
+        .product .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            gap: 10px;
+        }
+
+        .product button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .product button:hover {
+            background-color: var(--primary-hover);
+            box-shadow: var(--neon-glow);
+        }
+
+        .product .view-button {
+            background-color: var(--success-color);
+        }
+
+        .product .view-button:hover {
+            background-color: var(--success-hover);
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .filters button {
+            padding: 8px 15px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-color);
+        }
+
+        .filters button.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: var(--neon-glow);
+        }
+
+        .filters button:hover {
+            transform: translateY(-2px);
+        }
+
+        .data-info {
+            text-align: center;
+            margin-bottom: 20px;
+            font-style: italic;
+            color: var(--muted-color);
+        }
+
+        /* Navigation */
+        .top-nav {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .top-nav button {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            position: relative;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .top-nav button:hover {
+            color: var(--primary-color);
+        }
+
+        .top-nav button.active {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .top-nav button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--primary-color);
+            animation: underlineGrow 0.3s ease-out;
+        }
+
+        /* Alerts Tab */
+        .alerts-tab {
+            margin-top: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .alerts-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .alert-item {
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 5px;
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 5px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+
+        .alert-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px var(--shadow-color);
+        }
+
+        .alert-item img {
+            max-width: 100%;
+            height: auto;
+            max-height: 150px;
+            object-fit: contain;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background-color: var(--modal-bg);
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px var(--shadow-color), 0 0 20px var(--primary-color);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close {
+            color: var(--muted-color);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover {
+            color: var(--text-color);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: var(--text-color);
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .modal-content input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px var(--primary-color);
+        }
+
+        .modal-content button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .modal-content button:hover {
+            background-color: var(--primary-hover);
+            box-shadow: var(--neon-glow);
+        }
+
+        .product-info {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: var(--card-bg);
+            border-radius: 5px;
+            border-left: 3px solid var(--primary-color);
+            color: var(--text-color);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toggle-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px var(--shadow-color);
+        }
+
+        .toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px var(--shadow-color);
+        }
+
+        .toggle-icon {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        /* Loading Animation */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 5px;
+            box-shadow: 0 2px 5px var(--shadow-color);
+            animation: fadeIn 0.5s ease;
+        }
+
+        /* Haki Effects */
+        .haki-chaos-ray {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 150%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ff0000, transparent);
+            clip-path: polygon(0% 50%, 5% 30%, 10% 70%, 15% 20%, 20% 80%,
+                    25% 40%, 30% 90%, 35% 30%, 40% 100%, 45% 50%,
+                    50% 0%, 55% 60%, 60% 10%, 65% 70%, 70% 20%,
+                    75% 80%, 80% 30%, 85% 90%, 90% 40%, 95% 100%, 100% 50%);
+            transform-origin: left center;
+            animation: hakiChaos 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            z-index: 9999;
+            filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.5));
+        }
+
+        .haki-aura {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            border: 1px solid rgba(255, 50, 50, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            animation: auraExpand 0.8s ease-out forwards;
+            z-index: 9998;
+        }
+
+        /* Chatbot Bubble Styles */
+        #chatBubbleContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            transition: all 0.3s ease;
+        }
+
+        .chat-bubble {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            z-index: 10;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .chat-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .chat-bubble.main {
+            background-color: #FF5722;
+            /* Orange */
+            background-image: url('/static/debug.png');
+        }
+
+        .chat-bubble.luffy {
+            background-color: #FF5722;
+            /* Orange */
+            background-image: url('/static/luffy-bot.png');
+            transform: translateY(-80px) scale(0);
+            opacity: 0;
+            transition: all 0.3s ease 0.1s;
+        }
+
+        .chat-bubble.pro {
+            background-color: #2196F3;
+            /* Blue */
+            background-image: url('/static/vegapunk-bot.png');
+            transform: translate(-60px, -60px) scale(0);
+            opacity: 0;
+            transition: all 0.3s ease 0.2s;
+        }
+
+        .chat-bubble.debug {
+            background-color: #4CAF50;
+            /* Green */
+            background-image: url('/static/otto.png');
+            transform: translateX(-90px) scale(0);
+            opacity: 0;
+            transition: all 0.3s ease 0.3s;
+        }
+
+        #chatBubbleContainer:hover .chat-bubble.luffy {
+            transform: translateY(-80px) scale(1);
+            opacity: 1;
+        }
+
+        #chatBubbleContainer:hover .chat-bubble.pro {
+            transform: translate(-60px, -60px) scale(1);
+            opacity: 1;
+        }
+
+        #chatBubbleContainer:hover .chat-bubble.debug {
+            transform: translateX(-90px) scale(1);
+            opacity: 1;
+        }
+
+        /* Chat Window Styles */
+        #chatWindow {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 320px;
+            max-height: 70vh;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            overflow: hidden;
+            transform: scale(0);
+            transform-origin: bottom right;
+            opacity: 0;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            z-index: 9998;
+        }
+
+        @media (max-width: 480px) {
+            #chatWindow {
+                width: 90%;
+                right: 5%;
+                bottom: 80px;
+                max-height: 60vh;
+            }
+
+            #chatBubbleContainer {
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .chat-bubble {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+
+            .chat-bubble.luffy {
+                transform: translateY(-70px) scale(0);
+            }
+
+            .chat-bubble.pro {
+                transform: translate(-50px, -50px) scale(0);
+            }
+
+            .chat-bubble.debug {
+                transform: translateX(-70px) scale(0);
+            }
+
+            #chatBubbleContainer:hover .chat-bubble.luffy {
+                transform: translateY(-70px) scale(1);
+            }
+
+            #chatBubbleContainer:hover .chat-bubble.pro {
+                transform: translate(-50px, -50px) scale(1);
+            }
+
+            #chatBubbleContainer:hover .chat-bubble.debug {
+                transform: translateX(-70px) scale(1);
+            }
+        }
+
+        #chatWindow.active {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        #chatHeader {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #chatHeader h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #chatHeader img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        #closeChat {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        #chatMessages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 350px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .user .message-content {
+            background-color: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot .message-content {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-bottom-left-radius: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .thinking {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            color: var(--muted-color);
+            font-style: italic;
+        }
+
+        .thinking .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--muted-color);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        #chatInputContainer {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+        }
+
+        #chatInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            outline: none;
+        }
+
+        #sendButton {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        #sendButton:hover {
+            background-color: var(--primary-hover);
+            transform: scale(1.05);
+        }
+
+        /* Bot specific colors */
+        .luffy-bot {
+            background-color: #FF5722 !important;
+            /* Orange */
+        }
+
+        .pro-bot {
+            background-color: #2196F3 !important;
+            /* Blue */
+        }
+
+        .debug-bot {
+            background-color: #4CAF50 !important;
+            /* Green */
+        }
+
+        input[type="number"]:disabled {
+            background-color: #e0e0e0;
+            color: #888;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Theme Toggle -->
+        <div class="theme-toggle">
+            <button id="themeToggle" class="toggle-btn">
+                <span class="toggle-icon">🌓</span>
+                <span id="themeText">Dark Mode</span>
+            </button>
+        </div>
+
+        <!-- Header -->
+        <header>
+            <h1>Web-Based Component Aggregator</h1>
+            <p>Track the tech that matters — before it's gone</p>
+        </header>
+
+        <!-- Search Form -->
+        <form id="searchForm" class="search-form" style="gap: 8px;">
+            <input type="text" id="searchQuery" placeholder="Search products..." required style="flex: 1;">
+            <input type="number" id="resultLimit" min="1" max="50" value="10" title="Top N"
+                style="width: 32px; padding: 3px; font-size: 13px; text-align: center; border-radius: 3px; flex: none;">
+            <label style="font-size: 14px; display: flex; align-items: center; gap: 4px;">
+                <input type="checkbox" id="showAllToggle" style="transform: scale(0.9); margin: 0;"> Show all
+            </label>
+            <button type="submit">Search</button>
+        </form>
+
+
+        <!-- Search Options -->
+        <div class="search-options">
+            <div class="refresh-option">
+                <input type="checkbox" id="forceRefresh" name="forceRefresh">
+                <label for="forceRefresh">Force refresh data</label>
+            </div>
+        </div>
+
+        <!-- Status Display -->
+        <div id="statusDisplay" class="status">Searching for products...</div>
+        <div id="dataInfo" class="data-info"></div>
+
+        <!-- Navigation Tabs -->
+        <div id="navigationTabs" class="top-nav">
+            <button id="productsTab" class="active">Search Products</button>
+            <button id="myAlertsTab">My Alerts</button>
+        </div>
+
+        <!-- Filters -->
+        <div id="filters" class="filters">
+            <button type="button" class="active" data-source="all">All Sources</button>
+            <button type="button" data-source="Robu.in">Robu.in</button>
+            <button type="button" data-source="RoboCraze">RoboCraze</button>
+            <button type="button" data-source="Amazon.in">Amazon.in</button>
+        </div>
+
+        <!-- Results Grid -->
+        <div id="results" class="products-container"></div>
+
+        <!-- Alerts Tab -->
+        <div id="alertsTab" class="alerts-tab" style="display: none;">
+            <h2>My Alerts</h2>
+            <div id="alertsList" class="alerts-list"></div>
+        </div>
+
+        <!-- Email Modal -->
+        <div id="emailModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Enable Alert</h2>
+                <p>Enter your email address to receive notifications when this product becomes available:</p>
+                <div class="product-info" id="modalProductInfo"></div>
+                <input type="email" id="alertEmail" placeholder="Your email address" required>
+                <button id="submitAlertBtn">Enable Alert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Element -->
+    <audio id="hakiAudio" src="{{ url_for('static', filename='haki-sound.mp3') }}" preload="auto"></audio>
+
+    <!-- Chatbot Bubble -->
+    <div id="chatBubbleContainer">
+        <div class="chat-bubble main" id="mainChatBubble"></div>
+        <div class="chat-bubble luffy" id="luffyBubble"></div>
+        <div class="chat-bubble pro" id="proBubble"></div>
+        <div class="chat-bubble debug" id="debugBubble"></div>
+    </div>
+
+    <!-- Chat Window -->
+    <div id="chatWindow">
+        <div id="chatHeader">
+            <h3>
+                <img id="botAvatar" src="{{ url_for('static', filename='luffy-bot.png') }}" alt="Bot Avatar">
+                <span id="botName">LuffyBot</span>
+            </h3>
+            <button id="closeChat">×</button>
+        </div>
+        <div id="chatMessages">
+            <div class="message bot">
+                <img src="{{ url_for('static', filename='luffy-bot.png') }}" alt="Bot Avatar" class="message-avatar">
+                <div class="message-content">
+                    Yo! Ask me about electronics projects! ☠️
+                </div>
+            </div>
+        </div>
+        <div id="chatInputContainer">
+            <input type="text" id="chatInput" placeholder="Type a message...">
+            <button id="sendButton">➤</button>
+        </div>
+    </div>
+
+
+    <script>
+        // Global Variables
+        let allProducts = [];
+        let currentFilter = 'all';
+        let currentProductData = null;
+        let chatHistory = {
+            luffy: [],
+            pro: [],
+            debug: []
+        };
+
+
+
+        // DOM Elements
+        const searchForm = document.getElementById("searchForm");
+        const searchQuery = document.getElementById("searchQuery");
+        const statusDisplay = document.getElementById("statusDisplay");
+        const dataInfo = document.getElementById("dataInfo");
+        const resultsDiv = document.getElementById("results");
+        const filterButtons = document.querySelectorAll("#filters button");
+        const forceRefreshCheckbox = document.getElementById("forceRefresh");
+        const themeToggle = document.getElementById("themeToggle");
+        const themeText = document.getElementById("themeText");
+
+
+        // Chatbot Variables
+        let currentBot = 'luffy';
+        let chatOpen = false;
+
+        // Chatbot DOM Elements
+        const chatBubbleContainer = document.getElementById('chatBubbleContainer');
+        const mainChatBubble = document.getElementById('mainChatBubble');
+        const luffyBubble = document.getElementById('luffyBubble');
+        const proBubble = document.getElementById('proBubble');
+        const debugBubble = document.getElementById('debugBubble');
+        const chatWindow = document.getElementById('chatWindow');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendButton = document.getElementById('sendButton');
+        const closeChat = document.getElementById('closeChat');
+        const botAvatar = document.getElementById('botAvatar');
+        const botName = document.getElementById('botName');
+        const chatHeader = document.getElementById('chatHeader');
+
+        // Chatbot Functions
+        function openChat(botType = 'luffy') {
+            if (!chatOpen) {
+                chatWindow.classList.add('active');
+                chatInput.focus();
+            }
+            switchBot(botType);
+            chatOpen = true;
+        }
+
+        function closeChatWindow() {
+            chatWindow.classList.remove('active');
+            chatOpen = false;
+        }
+
+        function toggleChat() {
+            if (chatOpen) {
+                closeChatWindow();
+            } else {
+                openChat(currentBot); // Open with current bot
+            }
+        }
+
+        function switchBot(botType) {
+            currentBot = botType;
+
+            // Update UI based on bot type
+            switch (botType) {
+                case 'luffy':
+                    botAvatar.src = "{{ url_for('static', filename='luffy-bot.png') }}";
+                    botName.textContent = "LuffyBot";
+                    chatHeader.classList.add('luffy-bot');
+                    chatHeader.classList.remove('pro-bot', 'debug-bot');
+                    break;
+                case 'pro':
+                    botAvatar.src = "{{ url_for('static', filename='vegapunk-bot.png') }}";
+                    botName.textContent = "DR.Vegapunk";
+                    chatHeader.classList.add('pro-bot');
+                    chatHeader.classList.remove('luffy-bot', 'debug-bot');
+                    break;
+                case 'debug':
+                    botAvatar.src = "{{ url_for('static', filename='otto.png') }}";
+                    botName.textContent = "DebugBot";
+                    chatHeader.classList.add('debug-bot');
+                    chatHeader.classList.remove('luffy-bot', 'pro-bot');
+                    break;
+            }
+
+            // Clear chat and add welcome message
+            chatMessages.innerHTML = '';
+            // Restore chat history
+            if (chatHistory[botType].length > 0) {
+                chatHistory[botType].forEach(msg => addMessage(msg.sender, msg.message));
+            } else {
+                addWelcomeMessage(botType); // Only if no previous messages
+            }
+        }
+
+        function addWelcomeMessage(botType) {
+            let welcomeMessage = '';
+            switch (botType) {
+                case 'luffy':
+                    welcomeMessage = 'Yo! Ask me about electronics projects! ☠️';
+                    break;
+                case 'pro':
+                    welcomeMessage = 'Hello! I can help with professional electronics advice.';
+                    break;
+                case 'debug':
+                    welcomeMessage = 'Debug mode activated. What technical issues can I help with?';
+                    break;
+            }
+            addMessage('bot', welcomeMessage);
+        }
+
+        function addMessage(sender, message) {
+            const msgObj = { sender, message };
+            chatHistory[currentBot].push(msgObj);
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            if (sender === 'bot') {
+                messageDiv.innerHTML = `
+            <img src="${botAvatar.src}" alt="Bot Avatar" class="message-avatar">
+            <div class="message-content">${message}</div>
+        `;
+            } else {
+                messageDiv.innerHTML = `
+            <div class="message-content">${message}</div>
+            <img src="https://ui-avatars.com/api/?name=You&background=random" alt="User Avatar" class="message-avatar">
+        `;
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showThinking() {
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'thinking';
+            thinkingDiv.innerHTML = `
+        <img src="${botAvatar.src}" alt="Bot Avatar" class="message-avatar">
+        <div class="spinner"></div>
+        <span>Thinking...</span>
+        `;
+            chatMessages.appendChild(thinkingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return thinkingDiv;
+        }
+
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage('user', message);
+            chatInput.value = '';
+
+            // Show thinking indicator
+            const thinkingDiv = showThinking();
+
+            // Send to server
+            fetch("/chatbot", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message, bot: currentBot })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove thinking indicator
+                    thinkingDiv.remove();
+                    // Add bot response
+                    addMessage('bot', data.reply);
+                })
+                .catch(error => {
+                    thinkingDiv.remove();
+                    addMessage('bot', "Oops! Something went wrong. Try again later.");
+                });
+        }
+
+        // Chatbot Event Listeners
+        mainChatBubble.addEventListener('click', () => {
+            toggleChat();
+        });
+
+        luffyBubble.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (currentBot === 'luffy' && chatOpen) {
+                closeChatWindow(); // Close if clicking current bot
+            } else {
+                openChat('luffy'); // Otherwise open/switch to this bot
+            }
+        });
+
+        proBubble.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (currentBot === 'pro' && chatOpen) {
+                closeChatWindow(); // Close if clicking current bot
+            } else {
+                openChat('pro'); // Otherwise open/switch to this bot
+            }
+        });
+
+        debugBubble.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (currentBot === 'debug' && chatOpen) {
+                closeChatWindow(); // Close if clicking current bot
+            } else {
+                openChat('debug'); // Otherwise open/switch to this bot
+            }
+        });
+
+        closeChat.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeChatWindow();
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+
+        // Hover effect for bubbles
+        chatBubbleContainer.addEventListener('mouseenter', () => {
+            chatBubbleContainer.classList.add('hover');
+        });
+
+        chatBubbleContainer.addEventListener('mouseleave', () => {
+            if (!chatOpen) {
+                chatBubbleContainer.classList.remove('hover');
+            }
+        });
+        // Initialization Functions
+        function initEventListeners() {
+            searchForm.addEventListener("submit", handleSearchSubmit);
+
+            filterButtons.forEach(button => {
+                button.addEventListener("click", handleFilterClick);
+            });
+
+            themeToggle.addEventListener("click", toggleTheme);
+            chatInput.addEventListener("keypress", handleChatInput);
+        }
+
+        function setupNavigation() {
+            document.getElementById('productsTab').addEventListener('click', showProductsTab);
+            document.getElementById('myAlertsTab').addEventListener('click', showAlertsTab);
+        }
+
+        function setupModal() {
+            const modal = document.getElementById('emailModal');
+            const closeBtn = document.getElementsByClassName('close')[0];
+            const submitBtn = document.getElementById('submitAlertBtn');
+
+            closeBtn.onclick = () => modal.style.display = 'none';
+            window.onclick = e => { if (e.target == modal) modal.style.display = 'none'; };
+            submitBtn.onclick = handleAlertSubmission;
+        }
+
+        // Event Handlers
+        function handleSearchSubmit(e) {
+            e.preventDefault();
+            const query = searchQuery.value.trim();
+            if (query) performSearch(query);
+        }
+
+        function handleFilterClick() {
+            filterButtons.forEach(btn => btn.classList.remove("active"));
+            this.classList.add("active");
+            currentFilter = this.dataset.source;
+            displayProducts(allProducts);
+        }
+
+        function handleChatInput(e) {
+            if (e.key === "Enter") {
+                const message = chatInput.value.trim();
+                const bot = botSelector.value;
+                if (!message) return;
+
+                chatbox.innerHTML += `<div><strong>You:</strong> ${message}</div>`;
+                chatInput.value = "";
+
+                fetch("/chatbot", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message, bot })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        chatbox.innerHTML += `<div><strong>${botSelector.options[botSelector.selectedIndex].text}:</strong> ${data.reply}</div>`;
+                        chatbox.scrollTop = chatbox.scrollHeight;
+                    });
+            }
+        }
+
+        function handleAlertSubmission() {
+            const emailInput = document.getElementById('alertEmail');
+            const email = emailInput.value.trim();
+            const btn = document.getElementById('submitAlertBtn');
+
+            if (!email || !validateEmail(email)) {
+                alert("Enter a valid email address.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Enabling alert...';
+
+            const alertId = `alert_${Date.now()}_${currentProductData.source}`;
+            localStorage.setItem('userEmail', email);
+
+            fetch("/enable_alert", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `product_name=${encodeURIComponent(currentProductData.name)}&product_url=${encodeURIComponent(currentProductData.url)}&availability=${encodeURIComponent(currentProductData.availability)}&source=${encodeURIComponent(currentProductData.source)}&email=${encodeURIComponent(email)}&alert_id=${encodeURIComponent(alertId)}&image_url=${encodeURIComponent(currentProductData.image_url || '')}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    document.getElementById('emailModal').style.display = 'none';
+                    loadAlerts();
+                })
+                .catch(error => {
+                    alert("Failed to enable alert: " + error.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.textContent = "Enable Alert";
+                });
+        }
+
+        // Tab Navigation Functions
+        function showProductsTab() {
+            this.classList.add('active');
+            document.getElementById('myAlertsTab').classList.remove('active');
+            document.getElementById('filters').style.display = 'flex';
+            document.getElementById('results').style.display = 'grid';
+            document.getElementById('dataInfo').style.display = 'block';
+            document.getElementById('alertsTab').style.display = 'none';
+        }
+
+        function showAlertsTab() {
+            this.classList.add('active');
+            document.getElementById('productsTab').classList.remove('active');
+            document.getElementById('filters').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('dataInfo').style.display = 'none';
+            document.getElementById('alertsTab').style.display = 'block';
+            loadAlerts();
+        }
+
+        // Core Functions
+        function performSearch(query) {
+            const searchBtn = searchForm.querySelector("button");
+            searchBtn.disabled = true;
+            searchBtn.innerHTML = '<span class="loading-spinner"></span> Searching...';
+            statusDisplay.textContent = "Searching...";
+            statusDisplay.className = "status searching";
+            statusDisplay.style.display = "block";
+            resultsDiv.innerHTML = "";
+            dataInfo.textContent = "";
+            allProducts = [];
+
+            const resultLimit = document.getElementById("resultLimit").value;
+
+            fetch("/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `query=${encodeURIComponent(query)}&force_refresh=${forceRefreshCheckbox.checked}&limit=${encodeURIComponent(resultLimit)}`
+            })
+
+                .then(response => response.json())
+                .then(data => {
+                    allProducts = data;
+                    displayProducts(allProducts);
+                    dataInfo.textContent = `Showing results for "${query}"`;
+                    statusDisplay.style.display = "none";
+                })
+                .catch(err => {
+                    statusDisplay.textContent = "Error: " + err.message;
+                    statusDisplay.className = "status error";
+                    statusDisplay.style.display = "block";
+                })
+                .finally(() => {
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = "Search";
+                });
+        }
+
+        function displayProducts(products) {
+            resultsDiv.innerHTML = "";
+
+            let filtered;
+
+            const showAll = document.getElementById("showAllToggle").checked;
+            const resultLimit = parseInt(document.getElementById("resultLimit").value) || 10;
+
+            if (currentFilter === 'all') {
+                filtered = showAll ? products : products.slice(0, resultLimit);
+            } else {
+                filtered = products.filter(p => p.source === currentFilter);
+            }
+
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results"><p>No products found.</p></div>';
+                return;
+            }
+
+            filtered.forEach(product => {
+                const availabilityClass = product.availability === "Yes" ? "yes" : "no";
+                const productLink = product.product_link || "#";
+
+                const div = document.createElement("div");
+                div.className = "product";
+                div.innerHTML = `
+            <h2>${product.name}</h2>
+            <img src="${product.image_url}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
+            <p class="price"><strong>Price:</strong> ${product.price}</p>
+            <p><strong>Availability:</strong> <span class="availability ${availabilityClass}">${product.availability}</span></p>
+            <p class="source">Source: ${product.source}</p>
+            <div class="actions">
+                ${product.availability === "No" ? `<button onclick="enableAlert('${product.name}', '${product.product_link}', '${product.availability}', '${product.source}', '${product.image_url}')">Enable Alert</button>` : ''}
+                <button class="view-button" onclick="window.open('${productLink}', '_blank')">View Product</button>
+            </div>
+        `;
+                div.addEventListener("click", function (e) {
+                    if (!e.target.matches('button')) {
+                        window.open(productLink, '_blank');
+                    }
+                });
+                resultsDiv.appendChild(div);
+            });
+        }
+
+
+        function enableAlert(productName, productUrl, availability, source, imageUrl) {
+            currentProductData = { name: productName, url: productUrl, availability, source, image_url: imageUrl };
+            document.getElementById('modalProductInfo').innerHTML = `
+                <p><strong>${productName}</strong></p>
+                <p>Source: ${source}</p>
+                <p><a href="${productUrl}" target="_blank">Product Link</a></p>
+            `;
+            document.getElementById('emailModal').style.display = 'block';
+            const savedEmail = localStorage.getItem('userEmail');
+            if (savedEmail) document.getElementById('alertEmail').value = savedEmail;
+        }
+
+        function loadAlerts() {
+            const email = localStorage.getItem('userEmail');
+            const alertsList = document.getElementById('alertsList');
+            alertsList.innerHTML = '';
+
+            if (!email) {
+                alertsList.innerHTML = '<div class="no-results"><p>Please enable an alert first so we know your email.</p></div>';
+                return;
+            }
+
+            fetch("/get_alerts", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `email=${encodeURIComponent(email)}`
+            })
+                .then(res => res.json())
+                .then(alerts => {
+                    if (!alerts.length) {
+                        alertsList.innerHTML = '<div class="no-results"><p>No alerts found.</p></div>';
+                        return;
+                    }
+                    alerts.forEach(alert => {
+                        const div = document.createElement('div');
+                        div.className = 'alert-item';
+                        div.innerHTML = `
+                    <img src="${alert.image_url || 'https://via.placeholder.com/150?text=No+Image'}" alt="${alert.product_name}">
+                    <h3>${alert.product_name}</h3>
+                    <p><a href="${alert.product_url}" target="_blank">Product Link</a></p>
+                    <p><strong>Email:</strong> ${alert.email}</p>
+                    <p><strong>Source:</strong> ${alert.source}</p>
+                    <p><strong>Created:</strong> ${new Date(alert.timestamp * 1000).toLocaleString()}</p>
+                    <button onclick="removeAlert('${alert.alert_id}')">Remove Alert</button>
+                `;
+                        div.addEventListener("click", function (e) {
+                            if (!e.target.matches('button, a')) {
+                                window.open(alert.product_url, '_blank');
+                            }
+                        });
+                        alertsList.appendChild(div);
+                    });
+                })
+                .catch(err => {
+                    console.error("Error fetching alerts:", err);
+                    alertsList.innerHTML = '<p>Failed to load alerts. Try again later.</p>';
+                });
+        }
+
+        function removeAlert(alertId) {
+            if (!confirm("Are you sure you want to remove this alert?")) return;
+
+            const alertItem = document.querySelector(`.alert-item button[onclick="removeAlert('${alertId}')"]`).parentNode;
+            alertItem.style.animation = "fadeOut 0.3s ease";
+            setTimeout(() => {
+                fetch("/remove_alert", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: `alert_id=${encodeURIComponent(alertId)}`
+                }).then(() => loadAlerts());
+            }, 300);
+        }
+
+        // Theme Functions
+        function toggleTheme() {
+            const body = document.body;
+            const wasLightMode = !body.classList.contains("dark-mode");
+
+            body.classList.toggle("dark-mode");
+            const isDarkMode = body.classList.contains("dark-mode");
+
+            if (wasLightMode && isDarkMode) {
+                const hakiSound = document.getElementById("hakiAudio");
+                hakiSound.currentTime = 0;
+                hakiSound.play().catch(e => console.log("Audio play blocked:", e));
+            }
+
+            unleashHaki();
+            localStorage.setItem("darkMode", isDarkMode);
+            themeText.textContent = isDarkMode ? "Light Mode" : "Dark Mode";
+        }
+
+        function checkSavedTheme() {
+            const savedTheme = localStorage.getItem("darkMode");
+            if (savedTheme === "true") {
+                document.body.classList.add("dark-mode");
+                themeText.textContent = "Light Mode";
+            }
+        }
+
+        // Special Effects
+        function unleashHaki() {
+            const aura = document.createElement('div');
+            aura.className = 'haki-aura';
+            document.body.appendChild(aura);
+
+            const rayCount = 12 + Math.floor(Math.random() * 5);
+            for (let i = 0; i < rayCount; i++) {
+                const ray = document.createElement('div');
+                ray.className = 'haki-chaos-ray';
+                ray.style.setProperty('--angle', `${Math.random() * 360}deg`);
+                ray.style.width = `${100 + Math.random() * 100}%`;
+                document.body.appendChild(ray);
+            }
+
+            setTimeout(() => {
+                aura.remove();
+                document.querySelectorAll('.haki-chaos-ray').forEach(el => el.remove());
+            }, 800);
+        }
+
+        // Utility Functions
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        // Initialization
+        document.getElementById("resultLimit").addEventListener("input", () => {
+            if (currentFilter === "all" && !document.getElementById("showAllToggle").checked) {
+                displayProducts(allProducts);
+            }
+        });
+
+        const resultLimitInput = document.getElementById("resultLimit");
+        const showAllToggle = document.getElementById("showAllToggle");
+
+        showAllToggle.addEventListener("change", () => {
+            const isChecked = showAllToggle.checked;
+            resultLimitInput.disabled = showAllToggle.checked;
+
+            if (currentFilter === "all") {
+                displayProducts(allProducts);
+            }
+        });
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            initEventListeners();
+            setupNavigation();
+            setupModal();
+            checkSavedTheme();
+            document.addEventListener("click", function (event) {
+                const isClickInside = chatWindow.contains(event.target) || chatBubbleContainer.contains(event.target);
+                if (!isClickInside && chatOpen) {
+                    closeChatWindow();
+                }
+            });
+
+
+            document.body.style.opacity = 0;
+            setTimeout(() => {
+                document.body.style.transition = "opacity 0.5s ease";
+                document.body.style.opacity = 1;
+            }, 100);
+            document.getElementById("resultLimit").disabled = document.getElementById("showAllToggle").checked;
+
+        });
+
+
+    </script>
+</body>
+
+</html>
