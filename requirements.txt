@@ -1,0 +1,7 @@
+Flask
+selenium
+pymongo
+pyngrok
+requests
+sentence-transformers
+python-dotenv
