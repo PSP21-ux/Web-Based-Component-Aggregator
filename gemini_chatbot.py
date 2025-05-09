@@ -1,6 +1,9 @@
 import requests
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-GEMINI_API_KEY = "AIzaSyB5GV_n5iDq_y_mLZR0hz2pcsAbIRdJVcc"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
 def ask_luffybot(user_message, bot_type="luffy"):

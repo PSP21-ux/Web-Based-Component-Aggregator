@@ -7,9 +7,15 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pyngrok import ngrok
+import os
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables
 
-# Set your ngrok authtoken (already done)
-ngrok.set_auth_token("2wdVzcdEpdvPLc9cYrMmBB0yPxW_6Au8sqE7DSkoQXfPe6pWr")
+ngrok.set_auth_token(os.getenv("NGROK_AUTH_TOKEN"))
+
+EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
 
 # Set your reserved/static domain
 CUSTOM_DOMAIN = "powerful-maggot-definitely.ngrok-free.app"
@@ -51,8 +57,6 @@ DATA_FRESHNESS_HOURS = 24
 # Email configuration
 EMAIL_HOST = "smtp.gmail.com"  # Change this to your SMTP server
 EMAIL_PORT = 587
-EMAIL_USERNAME = "multisiteproductfinder@gmail.com"  # Change to your email
-EMAIL_PASSWORD = "sfbw zncq bidv osoa"     # Change to your app password
 
 def send_email(recipient, subject, message):
     """Send an email to the specified recipient."""
