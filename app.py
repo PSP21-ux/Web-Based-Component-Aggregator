@@ -36,7 +36,7 @@ from ml_ranker import rank_scraped_products
 app = Flask(__name__)
 
 # MongoDB connection
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient("mongodb://localhost:27017/psp")
 
 # Define databases
 robu_db = client["robu_db"]
@@ -126,7 +126,7 @@ def get_existing_results(search_query):
             product["source"] = "RoboCraze"
             all_products.append(product)
     
-    # Check if we have recent data from Amazon
+    # Check if we have recent data from Amazon  
     amazon_collection = get_collection_for_query(amazon_db, search_query)
     amazon_products = list(amazon_collection.find({
         "timestamp": {"$gt": freshness_threshold}
