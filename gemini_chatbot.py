@@ -1,71 +1,166 @@
-import requests
 import os
+import requests
 from dotenv import load_dotenv
+
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+GEMINI_MODEL = "gemini-3.6-flash"
+
+GEMINI_API_URL = (
+    "https://generativelanguage.googleapis.com/"
+    f"v1beta/models/{GEMINI_MODEL}:generateContent"
+)
+
 
 def ask_luffybot(user_message, bot_type="luffy"):
+
+    if not GEMINI_API_KEY:
+        return "❌ Gemini API key is missing. Check your .env file."
+
+    # --------------------------------------------------
+    # BOT PERSONALITIES
+    # --------------------------------------------------
+
     if bot_type == "pro":
+
         system_prompt = (
-            "You are Dr.vegapunk, A genius scientist from one piece a concise and professional electronics assistant.\n"
-            "Reply in short bullet points, no fluff. Use technical tone.\n"
-            "User asks for a project → give name, parts, steps. That's it.\n"
+            "You are Dr. Vegapunk from One Piece, "
+            "a genius scientist and professional electronics assistant.\n"
+            "Reply concisely and technically.\n"
+            "Avoid unnecessary fluff.\n"
+            "For projects, provide:\n"
+            "1. Project name\n"
+            "2. Components\n"
+            "3. Steps\n"
+            "4. Important notes\n"
         )
+
     elif bot_type == "debug":
-         system_prompt = (
-        "You are DebugBot, the official support assistant for the CirkitRadar website.\n"
-        "Your job is to help users resolve issues and understand how to use the platform.\n\n"
 
-        "CirkitRadar helps users track and compare tech products across Robu.in, RoboCraze, and Amazon.in.\n"
-        "It includes product search, stock alerts via email, and chatbot support.\n\n"
+        system_prompt = (
+            "You are DebugBot, the official support assistant "
+            "for the CirkitRadar website.\n\n"
 
-        "Key features you can help with:\n"
-        "- How to search: Users enter keywords like 'Raspberry Pi 4' in the search bar\n"
-        "- Force refresh: Checkbox for live scraping if data is stale\n"
-        "- Viewing products: Click a product card or the 'View Product' button\n"
-        "- Enabling alerts: If a product is out of stock, click 'Enable Alert', enter email\n"
-        "- Managing alerts: Go to the 'My Alerts' tab to see or remove alerts\n"
-        "- Bots: LuffyBot (fun), ProBot (technical), DebugBot (you)\n\n"
+            "CirkitRadar helps users track and compare electronics "
+            "products across Robu.in, RoboCraze, and Amazon.in.\n\n"
 
-        "Help users troubleshoot issues like:\n"
-        "- Site not loading\n"
-        "- Chatbot not responding\n"
-        "- Product not showing up\n"
-        "- Emails not received\n"
-        "- Buttons not working\n\n"
+            "Features:\n"
+            "- Product search\n"
+            "- Live scraping / force refresh\n"
+            "- Product comparison\n"
+            "- Stock alerts via email\n"
+            "- My Alerts management\n"
+            "- LuffyBot, ProBot and DebugBot\n\n"
 
-        "Ask clarifying questions if needed. Be concise, clear, and avoid fluff."
-    )
+            "Help users troubleshoot:\n"
+            "- Site not loading\n"
+            "- Chatbot not responding\n"
+            "- Products not appearing\n"
+            "- Emails not received\n"
+            "- Buttons not working\n"
+            "- Stock alerts\n\n"
+
+            "Be concise, clear and practical.\n"
+            "Ask a clarifying question when necessary."
+        )
 
     else:
-        # Default: LuffyBot
+
         system_prompt = (
-            "You are LuffyBot, a cheerful pirate who helps with electronics ideas!\n"
-            "Speak like Monkey D. Luffy. Be fun, adventurous, and go step-by-step:\n"
-            "1. Ask what project the user wants\n"
-            "2. Suggest a fun name\n"
-            "3. Ask if they want components\n"
-            "4. Then ask if they want steps\n"
-            "Use emojis, pirate slang, and keep it line-by-line!"
+            "You are LuffyBot from One Piece, "
+            "a cheerful pirate who loves electronics!\n"
+            "Be energetic, friendly and adventurous.\n"
+            "Use a little pirate slang and emojis.\n"
+            "Help users with electronics projects step-by-step.\n"
+            "Don't overdo the roleplay."
         )
+
+    # --------------------------------------------------
+    # GEMINI REQUEST
+    # --------------------------------------------------
 
     payload = {
         "contents": [
-            {"role": "user", "parts": [{"text": system_prompt + "\nUser: " + user_message}]}
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text":
+                            system_prompt
+                            + "\n\nUser: "
+                            + user_message
+                    }
+                ]
+            }
         ]
     }
 
     try:
-        response = requests.post(GEMINI_API_URL, json=payload)
-        response.raise_for_status()
+
+        response = requests.post(
+            GEMINI_API_URL,
+            params={
+                "key": GEMINI_API_KEY
+            },
+            json=payload,
+            timeout=30
+        )
+
+        # Useful when debugging API problems
+        if not response.ok:
+            return (
+                f"❌ Gemini API error "
+                f"({response.status_code}):\n"
+                f"{response.text[:1000]}"
+            )
+
         data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+        candidates = data.get(
+            "candidates",
+            []
+        )
+
+        if not candidates:
+            return "🤕 Gemini returned no response."
+
+        parts = (
+            candidates[0]
+            .get("content", {})
+            .get("parts", [])
+        )
+
+        if not parts:
+            return "🤕 Gemini returned an empty response."
+
+        return parts[0].get(
+            "text",
+            "🤕 Gemini returned no text."
+        )
+
+    except requests.exceptions.Timeout:
+
+        return (
+            "⏱️ Gemini took too long to respond. "
+            "Please try again."
+        )
+
+    except requests.exceptions.ConnectionError:
+
+        return (
+            "🌐 Could not connect to Gemini. "
+            "Check your internet connection."
+        )
 
     except requests.exceptions.RequestException as e:
-        return f"Oops! API request failed 🤕 Error: {e}"
-    except KeyError as e:
-        return f"Oops! Gemini API response was missing expected data 🤕 KeyError: {e}"
+
+        return (
+            f"🤕 Gemini API request failed:\n{e}"
+        )
+
     except Exception as e:
-        return f"Oops! Something went wrong 🤕 Error: {e}"
+
+        return (
+            f"🤕 Unexpected chatbot error:\n{e}"
+        )

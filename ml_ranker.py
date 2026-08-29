@@ -8,11 +8,13 @@ embedder = SentenceTransformer("all-MiniLM-L6-v2")
 ACCESSORY_KEYWORDS = ["case", "cover", "cable", "wire", "screw", "holder", "mount", "bracket", "connector", "clip"]
 ACCESSORY_PENALTY_WEIGHT = 0.6
 
-BOARD_BONUS_PATTERN = re.compile(r'\b(single board computer|compute module|model [345]|raspberry pi [345]|pi [345])\b', re.I)
-
 ACCESSORY_PENALTY_KEYWORDS = ACCESSORY_KEYWORDS
 SIMPLE_PRODUCT_KEYWORDS = ["board", "module", "sensor"]
 KIT_PENALTY_KEYWORDS = ["kit", "starter", "guide", "book", "tutorial", "project", "bundle"]
+
+# Words stripped out when building a normalized "core name" for de-duplication grouping
+CORE_NAME_IGNORE_WORDS = ["official", "model", "computer", "motherboard", "ram", "single", "plus", "sbc", "desktop"]
+_CORE_NAME_PATTERN = re.compile(r'\b(' + '|'.join(CORE_NAME_IGNORE_WORDS) + r')\b')
 
 
 def clean_text(text):
@@ -20,24 +22,59 @@ def clean_text(text):
 
 
 def extract_core_name(name):
-    """Simplify product names for better grouping."""
+    """Simplify product names for better grouping. Word-boundary-safe so
+    substrings inside other words (e.g. 'ram' inside 'dram') aren't stripped."""
     name = clean_text(name)
-    keywords_to_ignore = ["official", "model", "computer", "motherboard", "ram", "single", "plus", "sbc", "desktop"]
-    for kw in keywords_to_ignore:
-        name = name.replace(kw, '')
+    name = _CORE_NAME_PATTERN.sub('', name)
     return ' '.join(name.split())
 
 
-def normalize_price(price_str):
+def parse_price(price_str):
+    """Parses a price string into a float, or None if unparseable."""
     try:
-        price = float(price_str.replace(',', '').replace('₹', '').replace('$', '').strip())
-        return max(1.0 / price, 0.001)
-    except:
-        return 0.0
+        return float(price_str.replace(',', '').replace('₹', '').replace('$', '').strip())
+    except (ValueError, AttributeError):
+        return None
+
+
+def normalize_prices_in_place(products):
+    """
+    Min-max normalizes price across the current result set, inverted so
+    cheaper items score closer to 1.0. Bounded to [0, 1] regardless of the
+    actual price range, unlike a raw 1/price which can spike arbitrarily
+    high for very cheap items and dominate the final score.
+    """
+    parsed = [parse_price(p.get('price', '')) for p in products]
+    valid = [pr for pr in parsed if pr is not None]
+
+    if not valid:
+        for p in products:
+            p['price_score'] = 0.0
+        return
+
+    lo, hi = min(valid), max(valid)
+    span = (hi - lo) or 1.0  # avoid divide-by-zero when all prices are equal
+
+    for p, pr in zip(products, parsed):
+        p['price_score'] = 0.0 if pr is None else 1.0 - ((pr - lo) / span)
 
 
 def availability_score(status):
-    return 1.0 if status.lower() == "yes" else 0.8
+    """
+    Yes: confirmed in stock.
+    Unknown: no explicit signal either way.
+    Backorder: confirmed unavailable right now, but still orderable —
+               scored better than a hard out-of-stock.
+    Out of Stock: confirmed unavailable, no order path — worst case.
+    """
+    status = (status or "").strip().lower()
+    if status == "yes":
+        return 1.0
+    if status == "backorder":
+        return 0.4
+    if status == "out of stock":
+        return 0.1
+    return 0.7  # unknown / anything else
 
 
 def accessory_penalty(product_name, query):
@@ -51,9 +88,27 @@ def accessory_penalty(product_name, query):
     return 0.0
 
 
-def board_bonus(product_name):
-    """Boost core board products heavily."""
-    return 0.5 if BOARD_BONUS_PATTERN.search(product_name) else 0.0
+def core_product_bonus(product_name, query):
+    """
+    Bonus for products that look like standalone core items rather than
+    accessories or bundles. Generalized across any product family (not
+    just Raspberry Pi) by combining two signals:
+      1. Absence of accessory/kit language in the name.
+      2. How much of the query's own vocabulary appears in the name —
+         a tight, high-overlap match is more likely to be the exact
+         core product being searched for, versus a loosely related item.
+    """
+    name_lower = product_name.lower()
+    if any(word in name_lower for word in ACCESSORY_KEYWORDS + KIT_PENALTY_KEYWORDS):
+        return 0.0
+
+    query_tokens = set(clean_text(query).split())
+    name_tokens = set(clean_text(product_name).split())
+    if not query_tokens:
+        return 0.0
+
+    overlap = len(query_tokens & name_tokens) / len(query_tokens)
+    return 0.3 * overlap
 
 
 def simplicity_bonus(product_name):
@@ -71,13 +126,14 @@ def official_bias(product_name):
 
 
 def token_match_bonus(product_name, query):
-    """Generic token matching bonus."""
-    product_name = product_name.lower()
-    query = query.lower()
-    query_tokens = query.split()
+    """Generic token matching bonus. Strips non-alphanumerics from both
+    sides first so e.g. 'esp32' vs 'esp-32' still match."""
+    product_clean = clean_text(product_name)
+    query_clean = clean_text(query)
+    query_tokens = query_clean.split()
     bonus = 0.0
     for token in query_tokens:
-        if token in product_name:
+        if token in product_clean:
             bonus += 0.1
         else:
             bonus -= 0.05
@@ -97,20 +153,30 @@ def rank_scraped_products(products, query):
     if not products:
         return []
 
-    # Compute weights and embeddings
     weights = dynamic_weights(query)
     query_embedding = embedder.encode(query, convert_to_tensor=True)
-    names_prices = [f"{p['name']} {p.get('price', '')}" for p in products]
-    embeddings = embedder.encode(names_prices, convert_to_tensor=True)
 
-    # Score each product
+    # Embed names only — appending the raw price string added noise without
+    # useful semantic signal, since price is already scored separately.
+    names = [p['name'] for p in products]
+    embeddings = embedder.encode(names, convert_to_tensor=True)
+
+    # Price is normalized relative to the whole result set (bounded [0,1])
+    # rather than per-item, so it can't spike arbitrarily and drown out
+    # semantic relevance for very cheap items.
+    normalize_prices_in_place(products)
+
     for i, p in enumerate(products):
         p['semantic_score'] = float(util.cos_sim(query_embedding, embeddings[i])[0])
-        p['price_score'] = normalize_price(p.get('price', ''))
         p['availability_score'] = availability_score(p.get('availability', 'unknown'))
 
         penalty = accessory_penalty(p['name'], query)
-        bonus = (simplicity_bonus(p['name']) + official_bias(p['name']) + token_match_bonus(p['name'], query) + board_bonus(p['name']))
+        bonus = (
+            simplicity_bonus(p['name']) +
+            official_bias(p['name']) +
+            token_match_bonus(p['name'], query) +
+            core_product_bonus(p['name'], query)
+        )
 
         p['final_score'] = (
             weights['relevance'] * p['semantic_score'] +
@@ -127,15 +193,12 @@ def rank_scraped_products(products, query):
 
     deduped = []
     for group in grouped.values():
-        # Optionally penalize outliers
         sorted_group = sorted(group, key=lambda x: x['final_score'], reverse=True)
-        top = sorted_group[0]
-        deduped.append(top)
+        deduped.append(sorted_group[0])
 
-    # Final sort across top products
     final_sorted = sorted(deduped, key=lambda x: x['final_score'], reverse=True)
 
-    # Cleanup weights before returning
+    # Cleanup scoring fields before returning
     for p in final_sorted:
         for key in ['semantic_score', 'price_score', 'availability_score', 'final_score']:
             p.pop(key, None)

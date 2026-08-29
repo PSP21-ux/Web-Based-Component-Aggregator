@@ -1600,7 +1600,12 @@
             }
 
             filtered.forEach(product => {
-                const availabilityClass = product.availability === "Yes" ? "yes" : "no";
+                // Only "Yes" counts as confirmed in-stock. Everything else
+                // (Backorder, Out of Stock, Unknown) is alert-eligible, since
+                // the scrapers never actually produce the literal string "No" —
+                // the previous check `=== "No"` meant this button never rendered.
+                const isAvailable = product.availability === "Yes";
+                const availabilityClass = isAvailable ? "yes" : "no";
                 const productLink = product.product_link || "#";
 
                 const div = document.createElement("div");
@@ -1612,7 +1617,7 @@
             <p><strong>Availability:</strong> <span class="availability ${availabilityClass}">${product.availability}</span></p>
             <p class="source">Source: ${product.source}</p>
             <div class="actions">
-                ${product.availability === "No" ? `<button onclick="enableAlert('${product.name}', '${product.product_link}', '${product.availability}', '${product.source}', '${product.image_url}')">Enable Alert</button>` : ''}
+                ${!isAvailable ? `<button onclick="enableAlert('${product.name}', '${product.product_link}', '${product.availability}', '${product.source}', '${product.image_url}')">Enable Alert</button>` : ''}
                 <button class="view-button" onclick="window.open('${productLink}', '_blank')">View Product</button>
             </div>
         `;
