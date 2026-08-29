@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from pyngrok import ngrok
 import os
 from dotenv import load_dotenv
 
@@ -19,30 +18,11 @@ load_dotenv()
 
 
 # ============================================================
-# NGROK CONFIGURATION
-# ============================================================
-
-NGROK_AUTH_TOKEN = os.getenv("NGROK_AUTH_TOKEN")
-
-if NGROK_AUTH_TOKEN:
-    ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-else:
-    print("⚠️ NGROK_AUTH_TOKEN not found in .env")
-
-
-# ============================================================
 # EMAIL CONFIGURATION
 # ============================================================
 
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-
-
-# ============================================================
-# NGROK RESERVED DOMAIN
-# ============================================================
-
-CUSTOM_DOMAIN = "powerful-maggot-definitely.ngrok-free.app"
 
 
 # ============================================================
@@ -1376,56 +1356,18 @@ if __name__ == "__main__":
 
 
     # ========================================================
-    # START NGROK
-    # ========================================================
-
-    try:
-
-        public_url = ngrok.connect(
-            addr=80,
-            bind_tls=True,
-            domain=CUSTOM_DOMAIN
-        )
-
-
-        print(
-            f"\n🚀 Your app is live at: "
-            f"https://{CUSTOM_DOMAIN}\n"
-        )
-
-
-    except Exception as e:
-
-        print(
-            f"❌ Failed to open tunnel "
-            f"on static domain: {e}"
-        )
-
-        public_url = None
-
-
-    # ========================================================
     # START FLASK
     # ========================================================
 
-    try:
+    # Render provides the PORT environment variable.
+    # 5000 is used as the local development fallback.
+    port = int(os.environ.get("PORT", 5000))
 
-        app.run(
-            host="0.0.0.0",
-            port=80
-        )
+    print(
+        f"🚀 Starting Flask server on port {port}"
+    )
 
-
-    finally:
-
-        # ====================================================
-        # CLEAN UP NGROK
-        # ====================================================
-
-        if public_url:
-
-            ngrok.disconnect(
-                public_url
-            )
-
-        ngrok.kill()
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )
